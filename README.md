@@ -6,7 +6,7 @@ I was in charge of the sound module, enabling the robot to voice a request for h
 
 ## Hardware
 
-1    Arduino Uno
-1    [SparkFun MP3 Player Shield](https://www.sparkfun.com/products/12660)
-1    microSD card
-1    [Portable capsule speaker](https://www.amazon.com/X-Mini-XAM14-GM-Portable-Capsule-Speaker/dp/B00A0JUO48)
++ 1    Arduino Uno
++ 1    [SparkFun MP3 Player Shield](https://www.sparkfun.com/products/12660)
++ 1    microSD card
++ 1    [Portable capsule speaker](https://www.amazon.com/X-Mini-XAM14-GM-Portable-Capsule-Speaker/dp/B00A0JUO48)
