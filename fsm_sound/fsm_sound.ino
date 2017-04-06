@@ -6,9 +6,11 @@
  * 
  */
 
-#include <SPI.h>
+/**
+ * Methods from example script: setup(), loop(), parse_menu(), help(), print_padded_number()
+ */
 
-//Add the SdFat and MP3 Shield Libraries
+#include <SPI.h>
 #include <SdFat.h>
 #include <SdFatUtil.h>
 #include <SFEMP3Shield.h>
@@ -40,7 +42,6 @@ int8_t buffer_pos; // next position to receive character from Serial port.
  *
  * After Arduino's kernel has booted initialize basic features for this
  * application, such as Serial port and MP3player objects with .begin.
- * Along with displaying the Help Menu.
  *
  * \note returned Error codes are typically passed up from MP3player.
  * Whicn in turns creates and initializes the SdCard objects.
@@ -56,13 +57,6 @@ void setup() {
 
   Serial.begin(115200);
 
-  Serial.print(F("F_CPU = "));
-  Serial.println(F_CPU);
-  Serial.print(F("Free RAM = ")); // available in Version 1.0 F() bases the string to into Flash, to use less SRAM.
-  Serial.print(FreeRam(), DEC);  // FreeRam() is provided by SdFatUtil.h
-  Serial.println(F(" Should be a base line of 1017, on ATmega328 when using INTx"));
-
-
   //Initialize the SdCard.
   if(!sd.begin(SD_SEL, SPI_FULL_SPEED)) sd.initErrorHalt();
   // depending upon your SdCard environment, SPI_HAVE_SPEED may work better.
@@ -71,15 +65,6 @@ void setup() {
   //Initialize the MP3 Player Shield
   result = MP3player.begin();
   //check result, see readme for error codes.
-  if(result != 0) {
-    Serial.print(F("Error code: "));
-    Serial.print(result);
-    Serial.println(F(" when trying to start MP3 player"));
-    if( result == 6 ) {
-      Serial.println(F("Warning: patch file not found, skipping.")); // can be removed for space, if needed.
-      Serial.println(F("Use the \"d\" command to verify SdCard can be read")); // can be removed for space, if needed.
-    }
-  }
 
 #if (0)
   // Typically not used by most shields, hence commented out.
@@ -90,7 +75,6 @@ void setup() {
   }
 #endif
 
-  help();
   last_ms_char = millis(); // stroke the inter character timeout.
   buffer_pos = 0; // start the command string at zero length.
   parse_menu('l'); // display the list of files to play
@@ -99,10 +83,8 @@ void setup() {
 
 //------------------------------------------------------------------------------
 /**
- * \brief Main Loop the Arduino Chip
- *
- * This is called at the end of Arduino kernel's main loop before recycling.
- * And is where the user's serial input of bytes are read and analyzed by
+ * Main Loop: Called at the end of Arduino kernel's main loop before recycling.
+ * Also where the user's serial input of bytes are read and analyzed by
  * parsed_menu.
  *
  * Additionally, if the means of refilling is not interrupt based then the
@@ -113,13 +95,31 @@ void setup() {
  */
 void loop() {
 
-// Below is only needed if not interrupt driven. Safe to remove if not using.
-#if defined(USE_MP3_REFILL_MEANS) \
-    && ( (USE_MP3_REFILL_MEANS == USE_MP3_SimpleTimer) \
-    ||   (USE_MP3_REFILL_MEANS == USE_MP3_Polled)      )
 
-  MP3player.available();
-#endif
+// liani's experimentation
+
+//if (state = "one") {
+//  play b
+//  delay(1000);
+//}
+//
+//if (state = "two") {
+//  play b
+//  delay(250);
+//  play b
+//  delay(1000);
+//}
+//
+//if (state = "three") {
+//  play b
+//  delay(250);
+//  play b;
+//  delay(250)
+//  play b;
+//  delay(1000)
+//}
+
+// /end experimentation
 
   char inByte;
   if (Serial.available() > 0) {
@@ -160,7 +160,6 @@ void loop() {
 
           if (count == fn_index) {
             Serial.print(F("Index "));
-            SerialPrintPaddedNumber(count, 5 );
             Serial.print(F(": "));
             Serial.println(filename);
             Serial.print(F("Playing filename: "));
@@ -209,11 +208,8 @@ uint32_t  millis_prv;
 
 //------------------------------------------------------------------------------
 /**
- * \brief Decode the Menu.
- *
- * Parses through the characters of the users input, executing corresponding
- * MP3player library functions and features then displaying a brief menu and
- * prompting for next input command.
+ * Parses through user's input, executing corresponding MP3player library functions 
+ * and features then displaying a brief menu and prompting for next input command.
  */
 void parse_menu(byte key_command) {
 
@@ -225,7 +221,7 @@ void parse_menu(byte key_command) {
   char artist[30]; // buffer to contain the extract the artist name from the current filehandles
   char album[30]; // buffer to contain the extract the album name from the current filehandles
 
-  Serial.print(F("Received command: "));
+  Serial.print(F("\nReceived command: "));
   Serial.write(key_command);
   Serial.println(F(" "));
 
@@ -597,7 +593,6 @@ void parse_menu(byte key_command) {
       {
         file.getFilename(filename);
         if ( isFnMusic(filename) ) {
-          SerialPrintPaddedNumber(count, 5 );
           Serial.print(F(": "));
           Serial.println(filename);
           count++;
@@ -610,14 +605,9 @@ void parse_menu(byte key_command) {
       Serial.println(F("Busy Playing Files, try again later."));
     }
 
-  } else if(key_command == 'h') {
-    help();
-  }
+  } 
 
   // print prompt after key stroke has been processed.
-  Serial.print(F("Time since last command: "));  
-  Serial.println((float) (millis() -  millis_prv)/1000, 2);  
-  millis_prv = millis();
   Serial.print(F("Enter s,1-9,+,-,>,<,f,F,d,i,p,t,S,b"));
 #if !defined(__AVR_ATmega32U4__)
   Serial.print(F(",m,e,r,R,g,k,O,o,D,V,B,C,T,E,M:"));
@@ -625,57 +615,3 @@ void parse_menu(byte key_command) {
   Serial.println(F(",l,h :"));
 }
 
-//------------------------------------------------------------------------------
-/**
- * \brief Print Help Menu.
- *
- * Prints a full menu of the commands available along with descriptions.
- */
-void help() {
-  Serial.println(F("Arduino SFEMP3Shield Library Example:"));
-  Serial.println(F(" courtesy of Bill Porter & Michael P. Flaga"));
-  Serial.println(F("COMMANDS:"));
-  Serial.println(F(" [1-9] to play a track"));
-  Serial.println(F(" [f] play track001.mp3 by filename example"));
-  Serial.println(F(" [F] same as [f] but with initial skip of 2 second"));
-  Serial.println(F(" [s] to stop playing"));
-  Serial.println(F(" [d] display directory of SdCard"));
-  Serial.println(F(" [+ or -] to change volume"));
-  Serial.println(F(" [> or <] to increment or decrement play speed by 1 factor"));
-  Serial.println(F(" [i] retrieve current audio information (partial list)"));
-  Serial.println(F(" [p] to pause."));
-  Serial.println(F(" [t] to toggle sine wave test"));
-  Serial.println(F(" [S] Show State of Device."));
-  Serial.println(F(" [b] Play a MIDI File Beep"));
-#if !defined(__AVR_ATmega32U4__)
-  Serial.println(F(" [e] increment Spatial EarSpeaker, default is 0, wraps after 4"));
-  Serial.println(F(" [m] perform memory test. reset is needed after to recover."));
-  Serial.println(F(" [M] Toggle between Mono and Stereo Output."));
-  Serial.println(F(" [g] Skip to a predetermined offset of ms in current track."));
-  Serial.println(F(" [k] Skip a predetermined number of ms in current track."));
-  Serial.println(F(" [r] resumes play from 2s from begin of file"));
-  Serial.println(F(" [R] Resets and initializes VS10xx chip."));
-  Serial.println(F(" [O] turns OFF the VS10xx into low power reset."));
-  Serial.println(F(" [o] turns ON the VS10xx out of low power reset."));
-  Serial.println(F(" [D] to toggle SM_DIFF between inphase and differential output"));
-  Serial.println(F(" [V] Enable VU meter Test."));
-  Serial.println(F(" [B] Increament bass frequency by 10Hz"));
-  Serial.println(F(" [C] Increament bass amplitude by 1dB"));
-  Serial.println(F(" [T] Increament treble frequency by 1000Hz"));
-  Serial.println(F(" [E] Increament treble amplitude by 1dB"));
-#endif
-  Serial.println(F(" [l] Display list of music files"));
-  Serial.println(F(" [0####] Enter index of file to play, zero pad! e.g. 01-65534"));
-  Serial.println(F(" [h] this help"));
-}
-
-void SerialPrintPaddedNumber(int16_t value, int8_t digits ) {
-  int currentMax = 10;
-  for (byte i=1; i<digits; i++){
-    if (value < currentMax) {
-      Serial.print("0");
-    }
-    currentMax *= 10;
-  }
-  Serial.print(value);
-}
