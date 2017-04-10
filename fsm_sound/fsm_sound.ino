@@ -1,13 +1,6 @@
 /**
  * This sketch takes in a theoretical "state" from our finite state machine,
- * and triggers different clips in response.
- *
- * Filename        Corresponding state        Audio Clip
- * 
- */
-
-/**
- * Methods from example script: setup(), loop(), parse_menu(), help(), print_padded_number()
+ * and triggers different audio clips in response. 
  */
 
 #include <SPI.h>
@@ -15,41 +8,21 @@
 #include <SdFatUtil.h>
 #include <SFEMP3Shield.h>
 
-// Below is not needed if interrupt driven. Safe to remove if not using.
-#if defined(USE_MP3_REFILL_MEANS) && USE_MP3_REFILL_MEANS == USE_MP3_Timer1
-  #include <TimerOne.h>
-#elif defined(USE_MP3_REFILL_MEANS) && USE_MP3_REFILL_MEANS == USE_MP3_SimpleTimer
-  #include <SimpleTimer.h>
-#endif
-
-/**
- * \brief Object instancing the SdFat library.
- * principal object for handling all SdCard functions.
- */
-SdFat sd;
-
-/**
- * \brief Object instancing the SFEMP3Shield library.
- * principal object for handling all the attributes, members and functions for the library.
- */
-SFEMP3Shield MP3player;
+SdFat sd;  // instantiate SdFat library object
+SFEMP3Shield MP3player;  // instantiate SFEMP3Shield library object
 int16_t last_ms_char; // milliseconds of last recieved character from Serial port.
 int8_t buffer_pos; // next position to receive character from Serial port.
 
 //------------------------------------------------------------------------------
+
 /**
- * \brief Setup the Arduino Chip's feature for our use.
+ * Initialize basic features, such as Serial port and MP3player objects with .begin.
  *
- * After Arduino's kernel has booted initialize basic features for this
- * application, such as Serial port and MP3player objects with .begin.
- *
- * \note returned Error codes are typically passed up from MP3player.
- * Whicn in turns creates and initializes the SdCard objects.
- *
- * \see
- * \ref Error_Codes
- */
-  char buffer[6]; // 0-35K+null
+ * \note returned Error codes are typically passed up from MP3player, which in 
+ * turns creates and initializes the SdCard objects.
+*/
+
+char buffer[6]; // 0-35K+null
 
 void setup() {
 
@@ -57,171 +30,65 @@ void setup() {
 
   Serial.begin(115200);
 
-  //Initialize the SdCard.
-  if(!sd.begin(SD_SEL, SPI_FULL_SPEED)) sd.initErrorHalt();
-  // depending upon your SdCard environment, SPI_HAVE_SPEED may work better.
-  if(!sd.chdir("/")) sd.errorHalt("sd.chdir");
+  if(!sd.begin(SD_SEL, SPI_FULL_SPEED)) sd.initErrorHalt();  //Initialize the SdCard.
+  if(!sd.chdir("/")) sd.errorHalt("sd.chdir");               // depending upon your SdCard environment, SPI_HAVE_SPEED may work better.
 
-  //Initialize the MP3 Player Shield
-  result = MP3player.begin();
-  //check result, see readme for error codes.
+  result = MP3player.begin();  //Initialize the MP3 Player Shield
 
-#if (0)
-  // Typically not used by most shields, hence commented out.
-  Serial.println(F("Applying ADMixer patch."));
-  if(MP3player.ADMixerLoad("admxster.053") == 0) {
-    Serial.println(F("Setting ADMixer Volume."));
-    MP3player.ADMixerVol(-3);
-  }
-#endif
-
-  last_ms_char = millis(); // stroke the inter character timeout.
-  buffer_pos = 0; // start the command string at zero length.
-  parse_menu('l'); // display the list of files to play
+  last_ms_char = millis();  // stroke the inter character timeout.
+  buffer_pos = 0;           // start the command string at zero length.
+  parse_menu('l');          // display the list of files to play
 
 }
 
 //------------------------------------------------------------------------------
 /**
- * Main Loop: Called at the end of Arduino kernel's main loop before recycling.
- * Also where the user's serial input of bytes are read and analyzed by
- * parsed_menu.
- *
- * Additionally, if the means of refilling is not interrupt based then the
- * MP3player object is serviced with the availaible function.
- *
+ * Main Loop: Where the user's serial input of bytes are read and analyzed by
+ * parsed_menu().
+ * 
  * \note Actual examples of the libraries public functions are implemented in
  * the parse_menu() function.
+ * 
+ * Index    Filename        State(str)    Action                    Audio Clip
+ * -----    --------        ---------     ---------                 ----------
+ * 00001    TRACK004.mp3    "within"      playing elev music        *elevator music 1*
+ * 00002    TRACK001.mp3    "asking"      requesting aid @ elev     "Hello. Can you pls call elev for me?"
+ * 00003    TRACK002.mp3    "entering"    entering elev             "Entering elevator; pls stand clear."
+ * 00004    TRACK003.mp3    "exiting"     exiting elev              "Exiting elevator; pls stand clear."
+ * 
  */
 void loop() {
 
+  String state = "asking";
+  char audio_index;
 
-// liani's experimentation
+  // Converting state to appropriate audio index.
+  if (state == "asking") audio_index = '00002';
+  else if (state == "entering") audio_index = '00003';
+  else if (state == "within") audio_index = '00001';
+  else if (state == "exiting") audio_index = '00004';
 
-//if (state = "one") {
-//  play b
-//  delay(1000);
-//}
-//
-//if (state = "two") {
-//  play b
-//  delay(250);
-//  play b
-//  delay(1000);
-//}
-//
-//if (state = "three") {
-//  play b
-//  delay(250);
-//  play b;
-//  delay(250)
-//  play b;
-//  delay(1000)
-//}
-
-// /end experimentation
-
-  char inByte;
-  if (Serial.available() > 0) {
-    inByte = Serial.read();
-    if ((0x20 <= inByte) && (inByte <= 0x126)) { // strip off non-ASCII, such as CR or LF
-      if (isDigit(inByte)) { // macro for ((inByte >= '0') && (inByte <= '9'))
-        // else if it is a number, add it to the string
-        buffer[buffer_pos++] = inByte;
-      } else {
-        // input char is a letter command
-        buffer_pos = 0;
-        parse_menu(inByte);
-      }
-      buffer[buffer_pos] = 0; // update end of line
-      last_ms_char = millis(); // stroke the inter character timeout.
-    }
-  } else if ((millis() - last_ms_char) > 500 && ( buffer_pos > 0 )) {
-    // ICT expired and have something
-    if (buffer_pos == 1) {
-      // look for single byte (non-number) menu commands
-      parse_menu(buffer[buffer_pos - 1]);
-
-    } else if (buffer_pos > 5) {
-      // dump if entered command is greater then uint16_t
-      Serial.println(F("Ignored, Number is Too Big!"));
-
-    } else {
-      // otherwise its a number, scan through files looking for matching index.
-      int16_t fn_index = atoi(buffer);
-      SdFile file;
-      char filename[13];
-      sd.chdir("/",true);
-      uint16_t count = 1;
-      while (file.openNext(sd.vwd(),O_READ))
-      {
-        file.getFilename(filename);
-        if ( isFnMusic(filename) ) {
-
-          if (count == fn_index) {
-            Serial.print(F("Index "));
-            Serial.print(F(": "));
-            Serial.println(filename);
-            Serial.print(F("Playing filename: "));
-            Serial.println(filename);
-            int8_t result = MP3player.playMP3(filename);
-            //check result, see readme for error codes.
-            if(result != 0) {
-              Serial.print(F("Error code: "));
-              Serial.print(result);
-              Serial.println(F(" when trying to play track"));
-            }
-            char title[30]; // buffer to contain the extract the Title from the current filehandles
-            char artist[30]; // buffer to contain the extract the artist name from the current filehandles
-            char album[30]; // buffer to contain the extract the album name from the current filehandles
-            MP3player.trackTitle((char*)&title);
-            MP3player.trackArtist((char*)&artist);
-            MP3player.trackAlbum((char*)&album);
-
-            //print out the arrays of track information
-            Serial.write((byte*)&title, 30);
-            Serial.println();
-            Serial.print(F("by:  "));
-            Serial.write((byte*)&artist, 30);
-            Serial.println();
-            Serial.print(F("Album:  "));
-            Serial.write((byte*)&album, 30);
-            Serial.println();
-            break;
-          }
-          count++;
-        }
-        file.close();
-      }
-
-    }
-
-    //reset buffer to start over
-    buffer_pos = 0;
-    buffer[buffer_pos] = 0; // delimit
-  }
+  parse_menu(audio_index);    // Send audio_index to parse_menu() to play appropriate track.
 
   delay(100);
+  
 }
 
 uint32_t  millis_prv;
 
+
 //------------------------------------------------------------------------------
 /**
- * Parses through user's input, executing corresponding MP3player library functions 
- * and features then displaying a brief menu and prompting for next input command.
+ * Parses through user's input to execute corresponding MP3player library functions, 
+ * then displays a brief menu and prompts for next input command.
  */
 void parse_menu(byte key_command) {
 
   uint8_t result; // result code from some function as to be tested at later time.
 
-  // Note these buffer may be desired to exist globably.
-  // but do take much space if only needed temporarily, hence they are here.
-  char title[30]; // buffer to contain the extract the Title from the current filehandles
-  char artist[30]; // buffer to contain the extract the artist name from the current filehandles
-  char album[30]; // buffer to contain the extract the album name from the current filehandles
-
-  Serial.print(F("\nReceived command: "));
+  // only works for char 
+  Serial.println();
+  Serial.print(F("Received command: "));
   Serial.write(key_command);
   Serial.println(F(" "));
 
@@ -247,24 +114,7 @@ void parse_menu(byte key_command) {
       Serial.print(result);
       Serial.println(F(" when trying to play track"));
     } else {
-
       Serial.println(F("Playing:"));
-
-      //we can get track info by using the following functions and arguments
-      //the functions will extract the requested information, and put it in the array we pass in
-      MP3player.trackTitle((char*)&title);
-      MP3player.trackArtist((char*)&artist);
-      MP3player.trackAlbum((char*)&album);
-
-      //print out the arrays of track information
-      Serial.write((byte*)&title, 30);
-      Serial.println();
-      Serial.print(F("by:  "));
-      Serial.write((byte*)&artist, 30);
-      Serial.println();
-      Serial.print(F("Album:  "));
-      Serial.write((byte*)&album, 30);
-      Serial.println();
     }
 
   //if +/- to change volume
@@ -329,8 +179,7 @@ void parse_menu(byte key_command) {
     sd.chvol(); // assign desired sdcard's volume.
 #endif
     //tell the MP3 Shield to play that file
-    result = MP3player.playMP3(trackName, offset);
-    //check result, see readme for error codes.
+    result = MP3player.playMP3(trackName, offset);   //check result, see readme for error codes.
     if(result != 0) {
       Serial.print(F("Error code: "));
       Serial.print(result);
@@ -589,8 +438,8 @@ void parse_menu(byte key_command) {
       char filename[13];
       sd.chdir("/",true);
       uint16_t count = 1;
-      while (file.openNext(sd.vwd(),O_READ))
-      {
+
+      while (file.openNext(sd.vwd(),O_READ)) {
         file.getFilename(filename);
         if ( isFnMusic(filename) ) {
           Serial.print(F(": "));
@@ -604,7 +453,6 @@ void parse_menu(byte key_command) {
     } else {
       Serial.println(F("Busy Playing Files, try again later."));
     }
-
   } 
 
   // print prompt after key stroke has been processed.
