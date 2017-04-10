@@ -86,12 +86,6 @@ void parse_menu(byte key_command) {
 
   uint8_t result; // result code from some function as to be tested at later time.
 
-  // only works for char 
-  Serial.println();
-  Serial.print(F("Received command: "));
-  Serial.write(key_command);
-  Serial.println(F(" "));
-
   //if s, stop the current track
   if(key_command == 's') {
     Serial.println(F("Stopping"));
@@ -99,8 +93,7 @@ void parse_menu(byte key_command) {
 
   //if 1-9, play corresponding track
   } else if(key_command >= '1' && key_command <= '9') {
-    //convert ascii numbers to real numbers
-    key_command = key_command - 48;
+    key_command = key_command - 48;   //convert ascii numbers to real numbers
 
 #if USE_MULTIPLE_CARDS
     sd.chvol(); // assign desired sdcard's volume.
@@ -122,20 +115,15 @@ void parse_menu(byte key_command) {
     union twobyte mp3_vol; // create key_command existing variable that can be both word and double byte of left and right.
     mp3_vol.word = MP3player.getVolume(); // returns a double uint8_t of Left and Right packed into int16_t
 
-    if(key_command == '-') { // note dB is negative
-      // assume equal balance and use byte[1] for math
-      if(mp3_vol.byte[1] >= 254) { // range check
-        mp3_vol.byte[1] = 254;
-      } else {
-        mp3_vol.byte[1] += 2; // keep it simpler with whole dB's
-      }
+    if(key_command == '-') {                              // note dB is negative; assume equal balance and use byte[1] for math
+      if(mp3_vol.byte[1] >= 254) mp3_vol.byte[1] = 254;
+      else mp3_vol.byte[1] += 2;                          // keep it simpler with whole dB's
+
     } else {
-      if(mp3_vol.byte[1] <= 2) { // range check
-        mp3_vol.byte[1] = 2;
-      } else {
-        mp3_vol.byte[1] -= 2;
-      }
+      if(mp3_vol.byte[1] <= 2) mp3_vol.byte[1] = 2;       // range check
+      else mp3_vol.byte[1] -= 2;
     }
+    
     // push byte[1] into both left and right assuming equal balance.
     MP3player.setVolume(mp3_vol.byte[1], mp3_vol.byte[1]); // commit new volume
     Serial.print(F("Volume changed to -"));
@@ -146,20 +134,15 @@ void parse_menu(byte key_command) {
   } else if((key_command == '>') || (key_command == '<')) {
     uint16_t playspeed = MP3player.getPlaySpeed(); // create key_command existing variable
     // note playspeed of Zero is equal to ONE, normal speed.
-    if(key_command == '>') { // note dB is negative
-      // assume equal balance and use byte[1] for math
-      if(playspeed >= 254) { // range check
-        playspeed = 5;
-      } else {
-        playspeed += 1; // keep it simpler with whole dB's
-      }
+    if(key_command == '>') {                // note dB is negative; assume equal balance and use byte[1] for math
+      if(playspeed >= 254) playspeed = 5;   // range check
+      else playspeed += 1; // keep it simpler with whole dB's
+
     } else {
-      if(playspeed == 0) { // range check
-        playspeed = 0;
-      } else {
-        playspeed -= 1;
-      }
+      if(playspeed == 0) playspeed = 0;  // range check
+      else playspeed -= 1;
     }
+    
     MP3player.setPlaySpeed(playspeed); // commit new playspeed
     Serial.print(F("playspeed to "));
     Serial.println(playspeed, DEC);
@@ -168,9 +151,7 @@ void parse_menu(byte key_command) {
   But you must stick to 8.1 filenames, only 8 characters long, and 3 for the extension */
   } else if(key_command == 'f' || key_command == 'F') {
     uint32_t offset = 0;
-    if (key_command == 'F') {
-      offset = 2000;
-    }
+    if (key_command == 'F') offset = 2000;
 
     //create a string with the filename
     char trackName[] = "track001.mp3";
@@ -283,11 +264,9 @@ void parse_menu(byte key_command) {
 
   } else if(key_command == 'e') {
     uint8_t earspeaker = MP3player.getEarSpeaker();
-    if(earspeaker >= 3){
-      earspeaker = 0;
-    } else {
-      earspeaker++;
-    }
+    if(earspeaker >= 3) earspeaker = 0;
+    else earspeaker++;
+
     MP3player.setEarSpeaker(earspeaker); // commit new earspeaker
     Serial.print(F("earspeaker to "));
     Serial.println(earspeaker, DEC);
@@ -370,11 +349,9 @@ void parse_menu(byte key_command) {
     uint16_t TrebleFrequency = MP3player.getTrebleFrequency();
     Serial.print(F("Former TrebleFrequency = "));
     Serial.println(TrebleFrequency, DEC);
-    if (TrebleFrequency >= 15000) { // Range is from 0 - 1500Hz
-      TrebleFrequency = 0;
-    } else {
-      TrebleFrequency += 1000;
-    }
+    if (TrebleFrequency >= 15000) TrebleFrequency = 0;  // Range is from 0 - 1500Hz
+    else TrebleFrequency += 1000;
+
     MP3player.setTrebleFrequency(TrebleFrequency);
     Serial.print(F("New TrebleFrequency = "));
     Serial.println(MP3player.getTrebleFrequency(), DEC);
@@ -383,11 +360,9 @@ void parse_menu(byte key_command) {
     int8_t TrebleAmplitude = MP3player.getTrebleAmplitude();
     Serial.print(F("Former TrebleAmplitude = "));
     Serial.println(TrebleAmplitude, DEC);
-    if (TrebleAmplitude >= 7) { // Range is from -8 - 7dB
-      TrebleAmplitude = -8;
-    } else {
-      TrebleAmplitude++;
-    }
+    if (TrebleAmplitude >= 7) TrebleAmplitude = -8; // Range is from -8 - 7dB
+    else TrebleAmplitude++;
+
     MP3player.setTrebleAmplitude(TrebleAmplitude);
     Serial.print(F("New TrebleAmplitude = "));
     Serial.println(MP3player.getTrebleAmplitude(), DEC);
@@ -396,11 +371,9 @@ void parse_menu(byte key_command) {
     uint16_t BassFrequency = MP3player.getBassFrequency();
     Serial.print(F("Former BassFrequency = "));
     Serial.println(BassFrequency, DEC);
-    if (BassFrequency >= 150) { // Range is from 20hz - 150hz
-      BassFrequency = 0;
-    } else {
-      BassFrequency += 10;
-    }
+    if (BassFrequency >= 150) BassFrequency = 0;   // Range is from 20hz - 150hz
+    else BassFrequency += 10;
+    
     MP3player.setBassFrequency(BassFrequency);
     Serial.print(F("New BassFrequency = "));
     Serial.println(MP3player.getBassFrequency(), DEC);
@@ -409,11 +382,9 @@ void parse_menu(byte key_command) {
     uint16_t BassAmplitude = MP3player.getBassAmplitude();
     Serial.print(F("Former BassAmplitude = "));
     Serial.println(BassAmplitude, DEC);
-    if (BassAmplitude >= 15) { // Range is from 0 - 15dB
-      BassAmplitude = 0;
-    } else {
-      BassAmplitude++;
-    }
+    if (BassAmplitude >= 15) BassAmplitude = 0;  // Range is from 0 - 15dB
+    else BassAmplitude++;
+
     MP3player.setBassAmplitude(BassAmplitude);
     Serial.print(F("New BassAmplitude = "));
     Serial.println(MP3player.getBassAmplitude(), DEC);
