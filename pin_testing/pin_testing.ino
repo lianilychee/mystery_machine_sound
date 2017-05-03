@@ -1,5 +1,5 @@
 int pinRead = 8;
-int pinWrite = 0;
+int pinWrite = 5;
 
 void setup() {
   // put your setup code here, to run once:
@@ -13,7 +13,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  Serial.println("writing L");
+//  Serial.println("writing L");
   digitalWrite(pinWrite, LOW);
   if ( digitalRead(pinRead) == HIGH ) {
     Serial.println("Reading H");
@@ -26,7 +26,7 @@ void loop() {
   Serial.println();
   delay(2000);
   
-  Serial.println("writing H");
+//  Serial.println("writing H");
   digitalWrite(pinWrite, HIGH);   
   if ( digitalRead(pinRead) == HIGH ) {
     Serial.println("Reading H");
